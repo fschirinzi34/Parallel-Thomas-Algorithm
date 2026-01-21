@@ -42,15 +42,15 @@ void thomas_algorithm(int N, double *A, double *B, double *C, double *D, double 
 }
 
 /*
- * --------------------------------- thomas_modified ------------------------------------//
- * Implementazione dell'algpritmo di Thomas modificato; in input richiede:
+ * --------------------------------- thomas_v1 ------------------------------------//
+ * Implementazione dell'algoritmo di Thomas modificato; in input richiede:
  * - N: intero che indica la dimensione dei vettori A, B, C e D
  * - A: puntatore all'array che contiene gli elementi sotto la diagonale principale
  * - B: puntatore all'array che contiene gli elementi della diagonale principale
  * - C: puntatore all'array che contiene gli elementi sopra la diagonale principale
  * - D: puntatore all'array che contiene i termini noti del sistema
  */
-void thomas_modified(int N, double *A, double *B, double *C, double *D) {
+void thomas_v1(int N, double *A, double *B, double *C, double *D) {
 
     double w;
 
@@ -83,7 +83,7 @@ void thomas_modified(int N, double *A, double *B, double *C, double *D) {
             A[i] = A[i] / B[i];
             C[i] = C[i] / B[i];
             D[i] = D[i] / B[i];
-            B[i] = B[i] / B[i];
+            B[i] = 1.0;
         }
     }
 
@@ -109,7 +109,7 @@ void thomas_modified(int N, double *A, double *B, double *C, double *D) {
             D[i] = (D[i] - w * D[i + 1]) / B[i];
             A[i] = A[i] / B[i];
             C[i] = - (w * C[i + 1]) / B[i];
-            B[i] = B[i] / B[i];
+            B[i] = 1.0;
         }
         else {
             w = C[i] / B[i + 1];
@@ -279,7 +279,7 @@ int check_parallel_thomas(char *file_nameA, char *file_nameB, char *file_nameC, 
     clock_t end = clock();
     double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
 
-    printf("Tempo esecuzione Thomas sequenziale: %f secondi\n", elapsed);
+    printf("Tempo sequenziale: %f secondi\n", elapsed);
 
     for (int i = 0; i < block_size; i++) {
         if (fabs(X[start_i + i] - X_parallel[i]) > 0.001) {
@@ -339,6 +339,10 @@ int main(int argc, char *argv[]) {
     // La dimensionde del sistema ridotto è 2P in quanto prende solo 2 equazioni per processo
     size_reduce_system = 2 * p;
 
+    // Array utilizzato per memorizzare intera 1° riga e ultima riga di ogni processore (Solo A, C e D. B non lo invio, so già che è 1)
+    double global_send_raw[size_reduce_system * 3];
+
+    // Array che contengono i valori di A, B, C e D del sistema ridotto.
     double globalA[size_reduce_system];
     double globalB[size_reduce_system];
     double globalC[size_reduce_system];
@@ -362,52 +366,40 @@ int main(int argc, char *argv[]) {
 
     block_size = BLOCK_SIZE(id, p, n);
 
-
     MPI_Barrier(MPI_COMM_WORLD);
 
     // L'applicazione parallela parte e iniziamo a monitorare il tempo di esecuzione
     elapsed_time = -MPI_Wtime();
 
     /* -----------------------------  Passo 2  ----------------------------------------//
-     * Ogni processore applica thomas_modified al suo blocco di dati.
+     * Ogni processore applica thomas_v1 al suo blocco di dati.
      */
 
-    thomas_modified(block_size, A, B, C, D);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
+    thomas_v1(block_size, A, B, C, D);
 
     /* -----------------------------------  Passo 3  -------------------------------------------------//
      * Ogni processore manda la sua prima e ultima riga al processo con rango 0 (usando una MPI_Gather)
      */
 
     block_size = BLOCK_SIZE(id, p, n);
-    double reduce_A[2];
-    double reduce_B[2];
-    double reduce_C[2];
-    double reduce_D[2];
+    double send_raw[6];
 
-    reduce_A[0] = A[0];
-    reduce_A[1] = A[block_size - 1];
+    // Metto prima e ultima riga in un unico vettore in modo da effettuare una singola Gather.
+    send_raw[0] = A[0];
+    send_raw[1] = A[block_size - 1];
+    send_raw[2] = C[0];
+    send_raw[3] = C[block_size - 1];
+    send_raw[4] = D[0];
+    send_raw[5] = D[block_size - 1];
 
-    MPI_Gather(reduce_A, 2, MPI_DOUBLE, globalA, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Gather(send_raw, 6, MPI_DOUBLE, global_send_raw, 6, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    reduce_B[0] = B[0];
-    reduce_B[1] = B[block_size - 1];
+//    Grazie alla normalizzazione effettuata in precedenza posso non fare questa comunicazione (so già che B=1):
 
-    MPI_Gather(reduce_B, 2, MPI_DOUBLE, globalB, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-
-    reduce_C[0] = C[0];
-    reduce_C[1] = C[block_size - 1];
-
-    MPI_Gather(reduce_C, 2, MPI_DOUBLE, globalC, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-
-    reduce_D[0] = D[0];
-    reduce_D[1] = D[block_size - 1];
-
-    MPI_Gather(reduce_D, 2, MPI_DOUBLE, globalD, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+//    reduce_B[0] = B[0];
+//    reduce_B[1] = B[block_size - 1];
+//
+//    MPI_Gather(reduce_B, 2, MPI_DOUBLE, globalB, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -419,7 +411,29 @@ int main(int argc, char *argv[]) {
 
     double *reduce_X = (double *)malloc(size_reduce_system * sizeof(double));
     if (id == 0) {
-        thomas_algorithm(size_reduce_system, globalA, globalB, globalC, globalD, reduce_X);
+
+      // Scompongo le righe ricevute nelle componenti A, B, C e D.
+      int count = 0;
+      for (int i = 0; i < size_reduce_system; i += 2) {
+        globalA[i] = global_send_raw[count];
+        count++;
+        globalA[i+1] = global_send_raw[count];
+        count++;
+
+        globalB[i] = 1.0;
+
+        globalC[i] = global_send_raw[count];
+        count++;
+        globalC[i+1] = global_send_raw[count];
+        count++;
+
+        globalD[i] = global_send_raw[count];
+        count++;
+        globalD[i+1] = global_send_raw[count];
+        count++;
+      }
+
+      thomas_algorithm(size_reduce_system, globalA, globalB, globalC, globalD, reduce_X);
     }
 
     /* -----------------------------------  Passo 5  -------------------------------------------------//
@@ -451,7 +465,7 @@ int main(int argc, char *argv[]) {
 
     if (id == 0) {
 
-        printf("Elapsed time: %lf\n", elapsed_time);
+        printf("Tempo parallelo con %d processori: %lf secondi\n", p, elapsed_time);
 
         int check = check_parallel_thomas(argv[1],argv[2],argv[3], argv[4], X, block_size, BLOCK_LOW(id, n, p));
         if (check == 0) {

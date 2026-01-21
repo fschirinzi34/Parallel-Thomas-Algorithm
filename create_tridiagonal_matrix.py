@@ -1,7 +1,15 @@
-# L'obiettivo di questo script è creare una matrice tridiagonale diagonalmente dominante.
-import random
+# -------------------------------- create_tridiagonal_matrix.py -----------------------------#
+# Script utilizzato per creare una matrice tridiagonale diagonalmente dominante di dimensione n
+# Esempio di utilizzo: "python3 create_tridiagonal_matrix.py 10"
 
-N = 100000000  # numero di elementi
+import random
+import sys
+
+if len(sys.argv) > 1:
+    N = int(sys.argv[1])
+else:
+    print("Errore. Inserire la dimensione della matrice Tridiagonale (N) \n")
+
 files = ['A.txt', 'B.txt', 'C.txt', 'D.txt']
 
 random.seed()
