@@ -73,17 +73,15 @@ void thomas_v1(int N, double *A, double *B, double *C, double *D) {
              *
             */
 
+            // Oltre all'aggiornamento della riga, viene effettuata anche la normalizzazione per B[i]
             w = A[i] / B[i - 1];
             B[i] = B[i] - w * C[i - 1];
-            D[i] = D[i] - w * D[i - 1];
-            A[i] = - w * A[i - 1];
+            D[i] = (D[i] - w * D[i - 1]) / B[i];
+            A[i] = (- w * A[i - 1]) / B[i];
 
-            // Ad ogni iterazione viene effettuata la normalizzazione per B[i]
-
-            A[i] = A[i] / B[i];
             C[i] = C[i] / B[i];
-            D[i] = D[i] / B[i];
             B[i] = 1.0;
+
         }
     }
 
@@ -272,14 +270,8 @@ int check_parallel_thomas(char *file_nameA, char *file_nameB, char *file_nameC, 
         }
     }
 
-    clock_t start = clock();
-
     thomas_algorithm(n, A, B, C, D, X);
 
-    clock_t end = clock();
-    double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
-
-    printf("Tempo sequenziale: %f secondi\n", elapsed);
 
     for (int i = 0; i < block_size; i++) {
         if (fabs(X[start_i + i] - X_parallel[i]) > 0.001) {
@@ -342,13 +334,6 @@ int main(int argc, char *argv[]) {
     // Array utilizzato per memorizzare intera 1° riga e ultima riga di ogni processore (Solo A, C e D. B non lo invio, so già che è 1)
     double global_send_raw[size_reduce_system * 3];
 
-    // Array che contengono i valori di A, B, C e D del sistema ridotto.
-    double globalA[size_reduce_system];
-    double globalB[size_reduce_system];
-    double globalC[size_reduce_system];
-    double globalD[size_reduce_system];
-
-
     /* -----------------------------  Passo 1  ----------------------------------------//
      * Il passo 1 consiste nel distribuire l'input tra i vari processori.
      * Il processo p-1 legge di volta in volta il blocco di dati destinati al processo i-esimo
@@ -394,15 +379,6 @@ int main(int argc, char *argv[]) {
 
     MPI_Gather(send_raw, 6, MPI_DOUBLE, global_send_raw, 6, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-//    Grazie alla normalizzazione effettuata in precedenza posso non fare questa comunicazione (so già che B=1):
-
-//    reduce_B[0] = B[0];
-//    reduce_B[1] = B[block_size - 1];
-//
-//    MPI_Gather(reduce_B, 2, MPI_DOUBLE, globalB, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    MPI_Barrier(MPI_COMM_WORLD);
-
     /* -----------------------------------  Passo 4  -------------------------------------------------//
      * Il processore con rango 0 crea un sistema di dimensione 2P contenente tutte le righe ricevute
      * dagli altri processori (2 righe ricevute per processore) e risolve il nuovo sistema con thomas sequenziale.
@@ -411,6 +387,12 @@ int main(int argc, char *argv[]) {
 
     double *reduce_X = (double *)malloc(size_reduce_system * sizeof(double));
     if (id == 0) {
+
+      // Array che contengono i valori di A, B, C e D del sistema ridotto.
+      double globalA[size_reduce_system];
+      double globalB[size_reduce_system];
+      double globalC[size_reduce_system];
+      double globalD[size_reduce_system];
 
       // Scompongo le righe ricevute nelle componenti A, B, C e D.
       int count = 0;

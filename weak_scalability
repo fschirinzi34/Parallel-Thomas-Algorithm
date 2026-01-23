@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Weak Scalability Test
+
+> Weak_scalability_result.txt
+
+num_iteration=10
+num_processor=8
+num_data=1000000
+
+echo "$num_processor" >> Weak_scalability_result.txt
+
+# Ciclo sul numero di processori
+for ((i=1; i<=num_processor; i*=2)); do
+  mean_time=0
+  sum_time=0
+  N=$((num_data * i))
+
+  printf "%d\n" "$N"
+
+  # Genera i file di input per questa dimensione
+  python3 create_tridiagonal_matrix.py $N
+
+  # Ripeto l'esecuzione num_iteration volte e calcolo la media
+  for ((j=1; j<=num_iteration; j++)); do
+    t_i=$(mpirun -np $i parallel_Thomas A.txt B.txt C.txt D.txt | awk '{print $6}')
+    sum_time=$(python3 -c "print($sum_time + $t_i)")
+  done
+
+  # Calcola media con formato corretto (punto decimale)
+  mean_time=$(python3 -c "print('%.6f' % ($sum_time / $num_iteration))")
+
+  # Scrivi risultato (ora mean_time ha già il formato corretto)
+  echo "$mean_time" | tee -a "Weak_scalability_result.txt"
+done
