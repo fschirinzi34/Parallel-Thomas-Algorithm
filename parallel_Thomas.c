@@ -403,6 +403,7 @@ int main(int argc, char *argv[]) {
         count++;
 
         globalB[i] = 1.0;
+        globalB[i+1] = 1.0;
 
         globalC[i] = global_send_raw[count];
         count++;
@@ -449,7 +450,7 @@ int main(int argc, char *argv[]) {
 
         printf("Tempo parallelo con %d processori: %lf secondi\n", p, elapsed_time);
 
-        int check = check_parallel_thomas(argv[1],argv[2],argv[3], argv[4], X, block_size, BLOCK_LOW(id, n, p));
+        int check = check_parallel_thomas(argv[1],argv[2],argv[3], argv[4], X, block_size, BLOCK_LOW(id, p, n));
         if (check == 0) {
             printf("Thomas_parallelo è corretto \n");
         }
