@@ -212,7 +212,7 @@ void distribute_input(char *file_name, int *n, double **v, double **x) {
  * --------------------------------- check_parallel_thomas ------------------------------------//
  * Funzione utilizzata per testare la correttezza della versione parallela dell'algoritmo di Thomas.
  * Banalmente viene eseguito, sullo stesso input su cui è stato eseguito Thomas Parallelo, l'algoritmo di
- * Thomas sequenziale e si confrontano i risultati ottenuti. (Vengono confrontati i risultati ottenuti da un processore
+ * Thomas sequenziale e si confrontano i risultati ottenuti. (Vengono confrontati i risultati ottenuti da un processo
  * con quelli del blocco corrispondente in sequenziale)
  * In input prende:
  * - *file_nameA: Nome del file da cui leggere il vettore A.
@@ -331,11 +331,11 @@ int main(int argc, char *argv[]) {
     // La dimensionde del sistema ridotto è 2P in quanto prende solo 2 equazioni per processo
     size_reduce_system = 2 * p;
 
-    // Array utilizzato per memorizzare intera 1° riga e ultima riga di ogni processore (Solo A, C e D. B non lo invio, so già che è 1)
+    // Array utilizzato per memorizzare intera 1° riga e ultima riga di ogni processo (Solo A, C e D. B non lo invio, so già che è 1)
     double global_send_raw[size_reduce_system * 3];
 
     /* -----------------------------  Passo 1  ----------------------------------------//
-     * Il passo 1 consiste nel distribuire l'input tra i vari processori.
+     * Il passo 1 consiste nel distribuire l'input tra i vari processi.
      * Il processo p-1 legge di volta in volta il blocco di dati destinati al processo i-esimo
      * e glielo invia con una comunicazione point to point.
      * Diamo la possibilità di leggere il blocco al processo P-1 in quanto per come abbiamo definito le
@@ -357,13 +357,13 @@ int main(int argc, char *argv[]) {
     elapsed_time = -MPI_Wtime();
 
     /* -----------------------------  Passo 2  ----------------------------------------//
-     * Ogni processore applica thomas_v1 al suo blocco di dati.
+     * Ogni processo applica thomas_v1 al suo blocco di dati.
      */
 
     thomas_v1(block_size, A, B, C, D);
 
     /* -----------------------------------  Passo 3  -------------------------------------------------//
-     * Ogni processore manda la sua prima e ultima riga al processo con rango 0 (usando una MPI_Gather)
+     * Ogni processo manda la sua prima e ultima riga al processo con rango 0 (usando una MPI_Gather)
      */
 
     block_size = BLOCK_SIZE(id, p, n);
@@ -380,9 +380,9 @@ int main(int argc, char *argv[]) {
     MPI_Gather(send_raw, 6, MPI_DOUBLE, global_send_raw, 6, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     /* -----------------------------------  Passo 4  -------------------------------------------------//
-     * Il processore con rango 0 crea un sistema di dimensione 2P contenente tutte le righe ricevute
-     * dagli altri processori (2 righe ricevute per processore) e risolve il nuovo sistema con thomas sequenziale.
-     * Le soluzioni ottenute sono i valori delle variabili di bordo dei sistemi locali nei processori.
+     * Il processo con rango 0 crea un sistema di dimensione 2P contenente tutte le righe ricevute
+     * dagli altri processi (2 righe ricevute per processo) e risolve il nuovo sistema con thomas sequenziale.
+     * Le soluzioni ottenute sono i valori delle variabili di bordo dei sistemi locali nei processi.
      */
 
     double *reduce_X = (double *)malloc(size_reduce_system * sizeof(double));
@@ -420,14 +420,14 @@ int main(int argc, char *argv[]) {
     }
 
     /* -----------------------------------  Passo 5  -------------------------------------------------//
-     * Usando una MPI_Scatter il processore con rango 0 invia le variabili di bordo ai processori corrispondenti.
-     * X[0] e X[1] verranno inviati al processore P[0], X[2] e X[3] verranno inviati al processore P[1] ecc...
+     * Usando una MPI_Scatter il processo con rango 0 invia le variabili di bordo ai processi corrispondenti.
+     * X[0] e X[1] verranno inviati al processo P[0], X[2] e X[3] verranno inviati al processo P[1] ecc...
      */
 
     MPI_Scatter(reduce_X, 2, MPI_DOUBLE, X, 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     /* -----------------------------------  Passo 6  -------------------------------------------------//
-     * Ogni processore, conoscendo le variabili di bordo può calcolarsi le variabili interne usando la formula
+     * Ogni processo, conoscendo le variabili di bordo può calcolarsi le variabili interne usando la formula
      * X[i] = D[i] - A[i] * X[bordo_sinistro] - C[i] * X[bordo_destro];
      */
 
@@ -464,7 +464,6 @@ int main(int argc, char *argv[]) {
     free(D);
 
     MPI_Finalize();
-
 
     return 0;
 }
