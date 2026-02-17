@@ -11,13 +11,13 @@
 
 /*
  * --------------------------------- thomas_algorithm ------------------------------------//
- * Implementazione dell'algpritmo di Thomas standard; in input richiede:
+ * Implementazione dell'algoritmo di Thomas standard; in input richiede:
  * - N: intero che indica la dimensione dei vettori A, B, C, D e X
- * - A: puntatore all'array che contiene gli elementi sotto la diagonale principale
- * - B: puntatore all'array che contiene gli elementi della diagonale principale
- * - C: puntatore all'array che contiene gli elementi sopra la diagonale principale
- * - D: puntatore all'array che contiene i termini noti del sistema
- * - X: puntatore all'array dove verranno inserite le soluzioni del sistema
+ * - *A: puntatore all'array che contiene gli elementi sotto la diagonale principale
+ * - *B: puntatore all'array che contiene gli elementi della diagonale principale
+ * - *C: puntatore all'array che contiene gli elementi sopra la diagonale principale
+ * - *D: puntatore all'array che contiene i termini noti del sistema
+ * - *X: puntatore all'array dove verranno inserite le soluzioni del sistema
  */
 void thomas_algorithm(int N, double *A, double *B, double *C, double *D, double *X) {
 
@@ -32,8 +32,7 @@ void thomas_algorithm(int N, double *A, double *B, double *C, double *D, double 
         D[i] = D[i] - w * D[i - 1];
     }
 
-    // BACKWARD: Partendo dall'ultima incognita e risalendo alla prima vengono ricavate
-    // le soluzioni del sistema
+    // BACKWARD: Partendo dall'ultima variabile X_i e risalendo alla prima vengono ricavate le incognite del sistema
     X[N - 1] = D[N - 1] / B[N - 1];
 
     for (int i = N - 2; i >=0; i--) {
@@ -43,12 +42,12 @@ void thomas_algorithm(int N, double *A, double *B, double *C, double *D, double 
 
 /*
  * --------------------------------- thomas_v1 ------------------------------------//
- * Implementazione dell'algoritmo di Thomas modificato; in input richiede:
+ * Implementazione della variante dell'algoritmo di Thomas; in input richiede:
  * - N: intero che indica la dimensione dei vettori A, B, C e D
- * - A: puntatore all'array che contiene gli elementi sotto la diagonale principale
- * - B: puntatore all'array che contiene gli elementi della diagonale principale
- * - C: puntatore all'array che contiene gli elementi sopra la diagonale principale
- * - D: puntatore all'array che contiene i termini noti del sistema
+ * - *A: puntatore all'array che contiene gli elementi sotto la diagonale principale
+ * - *B: puntatore all'array che contiene gli elementi della diagonale principale
+ * - *C: puntatore all'array che contiene gli elementi sopra la diagonale principale
+ * - *D: puntatore all'array che contiene i termini noti del sistema
  */
 void thomas_v1(int N, double *A, double *B, double *C, double *D) {
 
@@ -71,9 +70,9 @@ void thomas_v1(int N, double *A, double *B, double *C, double *D) {
              *
              *                Ri = Ri - w * R_{i-1}   con w = (Ai)/(B_{i-1})
              *
+			 * Oltre all'aggiornamento della riga, viene effettuata anche la normalizzazione per B[i]
             */
 
-            // Oltre all'aggiornamento della riga, viene effettuata anche la normalizzazione per B[i]
             w = A[i] / B[i - 1];
             B[i] = B[i] - w * C[i - 1];
             D[i] = (D[i] - w * D[i - 1]) / B[i];
@@ -87,18 +86,18 @@ void thomas_v1(int N, double *A, double *B, double *C, double *D) {
 
     /*
      * Devo eliminare elemento sopra la diagonale principale. Partendo dalla terzultima riga e applicando
-     * la formula descritto in seguito si eliminano gli elementi al di sopra della diagonale principale e
+     * la formula descritta in seguito si eliminano gli elementi al di sopra della diagonale principale e
      * si fa in modo che tutte le equazioni interne dipendano solo dalla variabile di bordo destra.
-     * In questo modo alla fine le righe interne avranno la dipendenza SOLO dallle variabili di bordo
+     * In questo modo alla fine le righe interne avranno la dipendenza SOLO dalle variabili di bordo
      * e non dalle incognite vicine.
      *
-     * La formula è la seguente:
+     * La formula di aggiornamento è la seguente:
      *
      *                Ri = Ri - w * R_{i+1}   con w = (Ci)/(B_{i+1})
      *
      * La 1° riga viene trattata diversamente in quanto  se viene eseguita la stessa formula
      * si ha che l'elemento B[0] non è più pari ad 1 in quanto subisce l'aggiornamento dell'A[1] che gli sta sotto.
-     * Bisogna trattare la 1° riga in modo differente.
+     * Pertanto bisogna trattare la 1° riga in modo differente.
     */
     for (int i = N - 3; i >= 0; i--) {
         if (i == 0) {
@@ -123,8 +122,8 @@ void thomas_v1(int N, double *A, double *B, double *C, double *D) {
  * Funzione che distribuisce l'input tra i vari processi; in input prende:
  * - *file_name: Nome del file da cui leggere l'input.
  * - *n: Puntatore ad un intero in cui salvare la dimensione del vettore da distribuire tra i vari processi
- * - **v: Puntatore a puntatore da riempire la parte del vettore di input che spetta ad ogni processo
- * - **x: Puntatote a puntatore da allocare per ogni processo, conterrà le soluzioni del sistema (ogni processo lavora su un pezzo differente)
+ * - **v: Puntatore a puntatore da riempire con la parte del vettore di input che spetta ad ogni processo
+ * - **x: Puntatore a puntatore da allocare per ogni processo, conterrà le soluzioni del sistema (ogni processo lavora su un pezzo differente)
  */
 void distribute_input(char *file_name, int *n, double **v, double **x) {
     int id;
@@ -144,8 +143,8 @@ void distribute_input(char *file_name, int *n, double **v, double **x) {
     }
     else {
         /* E' l'ultimo processo a leggere di volta in volta il pezzo dell'input da dover distribuire, questo perchè per
-         * come sono state definite le MACRO all'ultimo processo spettere sempre parte intera superiore di n/p e quindi
-         * avrà sempre la memoria necessaria per memorizzare il pezzo da inviare.
+         * come sono state definite le MACRO all'ultimo processo spetta sempre parte intera superiore di n/p e quindi
+         * ha sempre la memoria necessaria per memorizzare il pezzo da inviare.
          */
         if (id == p - 1) {
             if (fscanf(fp, "%d", n) != 1) {
@@ -369,7 +368,7 @@ int main(int argc, char *argv[]) {
     block_size = BLOCK_SIZE(id, p, n);
     double send_raw[6];
 
-    // Metto prima e ultima riga in un unico vettore in modo da effettuare una singola Gather.
+    // Metto prima e ultima riga in un unico vettore in modo da effettuare una singola Gather (risparmio in latenza).
     send_raw[0] = A[0];
     send_raw[1] = A[block_size - 1];
     send_raw[2] = C[0];
@@ -382,7 +381,7 @@ int main(int argc, char *argv[]) {
     /* -----------------------------------  Passo 4  -------------------------------------------------//
      * Il processo con rango 0 crea un sistema di dimensione 2P contenente tutte le righe ricevute
      * dagli altri processi (2 righe ricevute per processo) e risolve il nuovo sistema con thomas sequenziale.
-     * Le soluzioni ottenute sono i valori delle variabili di bordo dei sistemi locali nei processi.
+     * Le soluzioni ottenute sono i valori delle variabili di bordo dei sistemi locali dei processi.
      */
 
     double *reduce_X = (double *)malloc(size_reduce_system * sizeof(double));
@@ -443,7 +442,7 @@ int main(int argc, char *argv[]) {
     elapsed_time += MPI_Wtime();
 
     /* -----------------------------------  Passo 7  -------------------------------------------------//
-     * Stampo il tempo di esecuzione parallelo e sequenziale e effettuo il controllo con check_parallel_thomas
+     * Stampo il tempo di esecuzione parallelo ed effettuo il controllo con check_parallel_thomas
      */
 
     if (id == 0) {
