@@ -53,7 +53,5 @@ with open(files[0], "w") as fa, \
             fd.write(str(d) + "\n")
             fb.write(str(b) + "\n")
 
-            if(i % 10000000 == 0):
-                print(i)
 
 print("File creati con successo \n")
