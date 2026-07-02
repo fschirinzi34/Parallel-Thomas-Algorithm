@@ -14,54 +14,46 @@ files = ['A.txt', 'B.txt', 'C.txt', 'D.txt']
 
 random.seed()
 
-a = []
-b = []
-c = []
-d = []
+with open(files[0], "w") as fa, \
+     open(files[1], "w") as fb, \
+     open(files[2], "w") as fc, \
+     open(files[3], "w") as fd:
 
-# Nell'ultima riga della matrice "a" deve essere 0
-
-a.append(0)
-c.append(random.uniform(-10, 10))
-d.append(random.uniform(-10, 10))
-
-# Voglio che la matrice sia diagonalmente dominante, quindi voglio che b[i] >= |a[i]| + |c[i]|
-b.append(abs(a[0]) + abs(c[0]) + 1)
+    fa.write(str(N) + "\n")
+    fb.write(str(N) + "\n")
+    fc.write(str(N) + "\n")
+    fd.write(str(N) + "\n")
 
 
-for i in range(1, N-1):
-    a.append(random.uniform(-10, 10))
-    c.append(random.uniform(-10, 10))
-    d.append(random.uniform(-10, 10))
+    for i in range(0, N):
+        a = random.uniform(-10, 10)
+        c = random.uniform(-10, 10)
+        d = random.uniform(-10, 10)
 
-    b.append(abs(a[i]) + abs(c[i]) + 1)
+        # Voglio che la matrice sia diagonalmente dominante, quindi voglio che b[i] >= |a[i]| + |c[i]|
+        b = abs(a) + abs(c) + 1
 
-# Nell'ultima riga della matrice "c" deve essere 0
+        # Il primo valore di "a" deve essere 0
+        if (i == 0):
+            fa.write(str(0) + "\n")
+            fc.write(str(c) + "\n")
+            fd.write(str(d) + "\n")
+            fb.write(str(b) + "\n")
 
-a.append(random.uniform(-10, 10))
-c.append(0)
-d.append(random.uniform(-10, 10))
+        # L'ultimo elemento del vettore "c" deve essere 0
+        elif(i == N-1):
+            fa.write(str(a) + "\n")
+            fc.write(str(0) + "\n")
+            fd.write(str(d) + "\n")
+            fb.write(str(b) + "\n")
 
-b.append(abs(a[N-1]) + abs(c[N-1]) + 1)
+        else:
+            fa.write(str(a) + "\n")
+            fc.write(str(c) + "\n")
+            fd.write(str(d) + "\n")
+            fb.write(str(b) + "\n")
 
-with open(files[0], "w") as f:
-    f.write(str(N) + "\n")
-    for i in range(N):
-        f.write(str(a[i]) + "\n")
+            if(i % 10000000 == 0):
+                print(i)
 
-with open(files[1], "w") as f:
-    f.write(str(N) + "\n")
-    for i in range(N):
-        f.write(str(b[i]) + "\n")
-
-with open(files[2], "w") as f:
-    f.write(str(N) + "\n")
-    for i in range(N):
-        f.write(str(c[i]) + "\n")
-
-with open(files[3], "w") as f:
-    f.write(str(N) + "\n")
-    for i in range(N):
-        f.write(str(d[i]) + "\n")
-
-
+print("File creati con successo \n")
