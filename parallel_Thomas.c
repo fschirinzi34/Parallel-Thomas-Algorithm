@@ -365,7 +365,6 @@ int main(int argc, char *argv[]) {
      * Ogni processo manda la sua prima e ultima riga al processo con rango 0 (usando una MPI_Gather)
      */
 
-    block_size = BLOCK_SIZE(id, p, n);
     double send_raw[6];
 
     // Metto prima e ultima riga in un unico vettore in modo da effettuare una singola Gather (risparmio in latenza).
